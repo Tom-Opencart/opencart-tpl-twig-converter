@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="Tom">
+    <title>Конвертер TPL ↔ Twig v2.1 | by Tom</title>
+    <!-- No external dependencies - fully offline -->
+    <style>
+        :root {
+            --bg-primary: #0f0f14;
+            --bg-secondary: #1a1a24;
+            --bg-tertiary: #252532;
+            --text-primary: #e8e8eb;
+            --text-secondary: #a0a0b0;
+            --accent-primary: #6366f1;
+            --accent-secondary: #818cf8;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --border: #3d3d4d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .logo i {
+            color: var(--accent-primary);
+            font-size: 1.5rem;
+        }
+
+        .version-badge {
+            background: var(--accent-primary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        .mode-toggle {
+            display: flex;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        .mode-btn {
+            padding: 8px 20px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mode-btn.active {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .mode-btn:hover:not(.active) {
+            color: var(--text-primary);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-secondary);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-primary);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            padding: 24px;
+            gap: 24px;
+            min-height: 0;
+            max-height: calc(100vh - 200px);
+        }
+
+        .editor-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            min-height: 400px;
+            max-height: 100%;
+        }
+
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .editor-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .editor-title i {
+            color: var(--accent-primary);
+        }
+
+        .file-type {
+            background: var(--bg-primary);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .editor-stats {
+            display: flex;
+            gap: 16px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .editor-body {
+            flex: 1;
+            display: flex;
+            position: relative;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .line-numbers {
+            width: 50px;
+            background: var(--bg-primary);
+            border-right: 1px solid var(--border);
+            padding: 16px 8px;
+            text-align: right;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            user-select: none;
+            overflow: hidden;
+        }
+
+        .code-editor {
+            flex: 1;
+            background: var(--bg-primary);
+            border: none;
+            padding: 16px;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-primary);
+            resize: none;
+            outline: none;
+            white-space: pre;
+            overflow: auto;
+        }
+
+        .code-editor::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.5;
+        }
+
+        .convert-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .arrow-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1.25rem;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .arrow-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .status-bar {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            padding: 10px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+        }
+
+        .status-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        .status-dot.error {
+            background: var(--error);
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .toast.success {
+            border-left: 3px solid var(--success);
+        }
+
+        .toast.error {
+            border-left: 3px solid var(--error);
+        }
+
+        .toast.success i {
+            color: var(--success);
+        }
+
+        .toast.error i {
+            color: var(--error);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .info-panel {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            padding: 20px 24px;
+        }
+
+        .info-tabs {
+            display: flex;
+            gap: 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+
+        .info-tab {
+            padding: 8px 0;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .info-tab:hover {
+            color: var(--text-primary);
+        }
+
+        .info-tab.active {
+            color: var(--accent-primary);
+            border-bottom-color: var(--accent-primary);
+        }
+
+        .info-content {
+            display: none;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .info-content.active {
+            display: block;
+        }
+
+        .rules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 12px;
+        }
+
+        .rule-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+        }
+
+        .rule-arrow {
+            color: var(--accent-primary);
+            flex-shrink: 0;
+        }
+
+        code {
+            background: var(--bg-primary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                flex-direction: column;
+            }
+
+            .convert-arrow {
+                transform: rotate(90deg);
+                padding: 8px 0;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .header {
+                padding: 12px 16px;
+            }
+
+            .main-content {
+                padding: 16px;
+            }
+
+            .action-btn span {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="header-left">
+                <div class="logo">
+                    <span style="font-size: 1.5rem; color: var(--accent-primary);">⑂</span>
+                    <span>TPL ↔ Twig Converter</span>
+                    <span class="version-badge">v2.1</span>
+                </div>
+                <div class="mode-toggle">
+                    <button class="mode-btn active" id="btn-tpl2twig" onclick="setMode('tpl2twig')">
+                        <span>TPL → Twig</span>
+                    </button>
+                    <button class="mode-btn" id="btn-twig2tpl" onclick="setMode('twig2tpl')">
+                        <span>Twig → TPL</span>
+                    </button>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="action-btn btn-primary" onclick="convert()">
+                    <span>✨</span>
+                    <span>Конвертировать</span>
+                </button>
+                <button class="action-btn btn-secondary" onclick="copyOutput()">
+                    <span>📋</span>
+                    <span>Копировать</span>
+                </button>
+                <button class="action-btn btn-danger" onclick="clearAll()">
+                    <span>🗑️</span>
+                    <span>Очистить</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="editor-panel">
+                <div class="editor-header">
+                    <div class="editor-title">
+                        <span style="color: var(--accent-primary);">📄</span>
+                        <span id="input-label">TPL (вход)</span>
+                        <span class="file-type" id="input-type">.tpl</span>
+                    </div>
+                    <div class="editor-stats">
+                        <span id="input-lines">0 строк</span>
+                        <span id="input-chars">0 символов</span>
+                    </div>
+                </div>
+                <div class="editor-body">
+                    <div class="line-numbers" id="input-line-nums">1</div>
+                    <textarea class="code-editor" id="input-code" placeholder="Вставьте TPL код здесь..."
+                        oninput="updateStats('input')" onscroll="syncScroll('input')"></textarea>
+                </div>
+            </div>
+
+            <div class="convert-arrow">
+                <button class="arrow-btn" onclick="convert()" title="Конвертировать">
+                    ➜
+                </button>
+            </div>
+
+            <div class="editor-panel">
+                <div class="editor-header">
+                    <div class="editor-title">
+                        <span style="color: var(--accent-primary);">📄</span>
+                        <span id="output-label">Twig (выход)</span>
+                        <span class="file-type" id="output-type">.twig</span>
+                    </div>
+                    <div class="editor-stats">
+                        <span id="output-lines">0 строк</span>
+                        <span id="output-chars">0 символов</span>
+                    </div>
+                </div>
+                <div class="editor-body">
+                    <div class="line-numbers" id="output-line-nums">1</div>
+                    <textarea class="code-editor" id="output-code" placeholder="Результат появится здесь..."
+                        oninput="updateStats('output')" onscroll="syncScroll('output')"></textarea>
+                </div>
+            </div>
+        </main>
+
+        <div class="info-panel">
+            <div class="info-tabs">
+                <button class="info-tab active" onclick="showInfoTab('rules')">Правила конвертации</button>
+                <button class="info-tab" onclick="showInfoTab('about')">О конвертере</button>
+            </div>
+            <div class="info-content active" id="info-rules">
+                <div class="rules-grid">
+                    <div class="rule-item">
+                        <code>&lt;?php echo $var; ?&gt;</code>
+                        <span class="rule-arrow">→</span>
+                        <code>{{ var }}</code>
+                    </div>
+                    <div class="rule-item">
+                        <code>$array['key']</code>
+                        <span class="rule-arrow">→</span>
+                        <code>array.key</code>
+                    </div>
+                    <div class="rule-item">
+                        <code>foreach($arr as $item)</code>
+                        <span class="rule-arrow">→</span>
+                        <code>{% for item in arr %}</code>
+                    </div>
+                    <div class="rule-item">
+                        <code>if (in_array($x, $arr))</code>
+                        <span class="rule-arrow">→</span>
+                        <code>{% if x in arr %}</code>
+                    </div>
+                    <div class="rule-item">
+                        <code>htmlspecialchars($var)</code>
+                        <span class="rule-arrow">→</span>
+                        <code>{{ var|escape }}</code>
+                    </div>
+                    <div class="rule-item">
+                        <code>if($v==1) echo 'sel'</code>
+                        <span class="rule-arrow">→</span>
+                        <code>{% if v==1 %}sel{% endif %}</code>
+                    </div>
+                </div>
+            </div>
+            <div class="info-content" id="info-about">
+                <p>Конвертер TPL ↔ Twig v2.1 для миграции шаблонов OpenCart 2.x на OpenCart 3.x+</p>
+                <p style="margin-top: 8px;">Поддерживает: вложенные массивы, циклы foreach с if/else, строки с
+                    конкатенацией, isset(), empty(), in_array().</p>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-left">
+                <div class="status-indicator">
+                    <div class="status-dot" id="status-dot"></div>
+                    <span id="status-text">Готов к работе</span>
+                </div>
+            </div>
+            <div>OpenCart Template Converter • by Tom</div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script>
+        /**
+         * TPL ↔ Twig Converter for OpenCart 3.x
+         * Comprehensive conversion rules v2.1
+         * Supports complex patterns from Hard Example folder
+         */
+
+        // ==================== TPL → TWIG ====================
+
+        function tplToTwig(code) {
+            let s = code;
+            let warnings = [];
+
+            // 0. Handle complex multiline PHP blocks with intelligent conversion
+            s = s.replace(/<\?php\s*\n([\s\S]*?)\?>/g, (match, content) => {
+                let converted = convertComplexPhpBlock(content.trim());
+                if (converted !== null) {
+                    return converted;
+                }
+                return `{# ═══ REQUIRES MANUAL CONVERSION ═══ #}
+{# 
+   This PHP block contains complex logic that needs manual restructuring.
+   
+   ORIGINAL CODE:
+${match}
+
+   CONVERSION TIPS:
+   - Move loop logic to controller, pass prepared array to template
+   - Use {% set varname %}...HTML with {{ var }}...{% endset %} for string building
+   - Use {% for %} with loop.index for counters
+#}`;
+            });
+
+            // 1. Preserve PHP blocks inside <script> tags
+            const scriptBlocks = [];
+            s = s.replace(/(<script[^>]*>)([\s\S]*?)(<\/script>)/gi, (match, open, content, close) => {
+                const index = scriptBlocks.length;
+                scriptBlocks.push({ open, content, close });
+                return `___SCRIPT_BLOCK_${index}___`;
+            });
+
+            // 2. Handle inline if-echo with single-quoted strings
+            s = s.replace(/<\?php\s*if\s*\(([^)]*(?:\[[^\]]*\])?[^)]*)\s*\)\s*echo\s+'([^']*)'\s*;?\s*\?>/g,
+                (m, fullCond, echoVal) => {
+                    const condMatch = fullCond.match(/\$(.+?)\s*(==|!=|===|!==|>|<|>=|<=)\s*(.+)/);
+                    if (condMatch) {
+                        const twigVar = convertVarToTwig(condMatch[1].trim());
+                        const operator = condMatch[2] === '===' ? '==' : condMatch[2] === '!==' ? '!=' : condMatch[2];
+                        const compareVal = condMatch[3].trim();
+                        return `{% if ${twigVar} ${operator} ${compareVal} %}${echoVal}{% endif %}`;
+                    }
+                    return m;
+                });
+
+            // Double-quoted strings
+            s = s.replace(/<\?php\s*if\s*\(([^)]*(?:\[[^\]]*\])?[^)]*)\s*\)\s*echo\s+"([^"]*)"\s*;?\s*\?>/g,
+                (m, fullCond, echoVal) => {
+                    const condMatch = fullCond.match(/\$(.+?)\s*(==|!=|===|!==|>|<|>=|<=)\s*(.+)/);
+                    if (condMatch) {
+                        const twigVar = convertVarToTwig(condMatch[1].trim());
+                        const operator = condMatch[2] === '===' ? '==' : condMatch[2] === '!==' ? '!=' : condMatch[2];
+                        const compareVal = condMatch[3].trim();
+                        return `{% if ${twigVar} ${operator} ${compareVal} %}${echoVal}{% endif %}`;
+                    }
+                    return m;
+                });
+
+            // 3. echo with htmlspecialchars
+            s = s.replace(/<\?php\s+echo\s+htmlspecialchars\s*\(\s*\$([^,]+?)\s*,\s*ENT_QUOTES\s*(?:,\s*'UTF-8'\s*)?\)\s*;?\s*\?>/g,
+                (m, v) => '{{ ' + convertVarToTwig(v.trim()) + '|escape }}');
+
+            // 4. isset() ternary
+            s = s.replace(/<\?php\s+echo\s+isset\s*\(\s*\$([^\)]+)\s*\)\s*\?\s*\$([^:]+)\s*:\s*(['"][^'"]*['"]|''|""|null)\s*;?\s*\?>/gi,
+                (m, checkVar, useVar, defaultVal) => '{{ ' + convertVarToTwig(useVar.trim()) + ' }}');
+
+            // 5. in_array()
+            s = s.replace(/<\?php\s+if\s*\(\s*in_array\s*\(\s*\$([^,]+)\s*,\s*\$([^\)]+)\s*\)\s*\)\s*\{\s*\?>/gi,
+                (m, needle, haystack) => `{% if ${convertVarToTwig(needle.trim())} in ${convertVarToTwig(haystack.trim())} %}`);
+
+            // 6. foreach with key => value
+            s = s.replace(/<\?php\s+foreach\s*\(\s*\$(\w+)\s+as\s+\$(\w+)\s*=>\s*\$(\w+)\s*\)\s*\{\s*\?>/g,
+                '{% for $2, $3 in $1 %}');
+            // Alternative syntax with colon
+            s = s.replace(/<\?php\s+foreach\s*\(\s*\$(\w+)\s+as\s+\$(\w+)\s*=>\s*\$(\w+)\s*\)\s*:\s*\?>/g,
+                '{% for $2, $3 in $1 %}');
+
+            // 7. Simple foreach
+            s = s.replace(/<\?php\s+foreach\s*\(\s*\$(\w+)\s+as\s+\$(\w+)\s*\)\s*\{\s*\?>/g,
+                '{% for $2 in $1 %}');
+            // Alternative syntax with colon
+            s = s.replace(/<\?php\s+foreach\s*\(\s*\$(\w+)\s+as\s+\$(\w+)\s*\)\s*:\s*\?>/g,
+                '{% for $2 in $1 %}');
+
+            // 7.1. endforeach (alternative syntax)
+            s = s.replace(/<\?php\s+endforeach\s*;?\s*\?>/g, '{% endfor %}');
+
+            // 8. if with isset()
+            s = s.replace(/<\?php\s+if\s*\(\s*isset\s*\(\s*\$([^\)]+)\s*\)\s*\)\s*\{\s*\?>/g,
+                (m, v) => '{% if ' + convertVarToTwig(v.trim()) + ' %}');
+            // Alternative syntax with colon
+            s = s.replace(/<\?php\s+if\s*\(\s*isset\s*\(\s*\$([^\)]+)\s*\)\s*\)\s*:\s*\?>/g,
+                (m, v) => '{% if ' + convertVarToTwig(v.trim()) + ' %}');
+
+            // 9. if with !empty() and empty()
+            s = s.replace(/<\?php\s+if\s*\(\s*!empty\s*\(\s*\$([^\)]+)\s*\)\s*\)\s*\{\s*\?>/g,
+                (m, v) => '{% if ' + convertVarToTwig(v.trim()) + ' %}');
+            s = s.replace(/<\?php\s+if\s*\(\s*empty\s*\(\s*\$([^\)]+)\s*\)\s*\)\s*\{\s*\?>/g,
+                (m, v) => '{% if not ' + convertVarToTwig(v.trim()) + ' %}');
+            // Alternative syntax with colon
+            s = s.replace(/<\?php\s+if\s*\(\s*!empty\s*\(\s*\$([^\)]+)\s*\)\s*\)\s*:\s*\?>/g,
+                (m, v) => '{% if ' + convertVarToTwig(v.trim()) + ' %}');
+            s = s.replace(/<\?php\s+if\s*\(\s*empty\s*\(\s*\$([^\)]+)\s*\)\s*\)\s*:\s*\?>/g,
+                (m, v) => '{% if not ' + convertVarToTwig(v.trim()) + ' %}');
+
+            // 10. Complex if conditions
+            s = s.replace(/<\?php\s+if\s*\((.+?)\)\s*\{\s*\?>/g, (m, cond) => {
+                return '{% if ' + convertConditionToTwig(cond) + ' %}';
+            });
+            // Alternative syntax with colon
+            s = s.replace(/<\?php\s+if\s*\((.+?)\)\s*:\s*\?>/g, (m, cond) => {
+                return '{% if ' + convertConditionToTwig(cond) + ' %}';
+            });
+
+            // 11. else if / elseif
+            s = s.replace(/<\?php\s+\}\s*else\s*if\s*\((.+?)\)\s*\{\s*\?>/g, (m, cond) => {
+                return '{% elseif ' + convertConditionToTwig(cond) + ' %}';
+            });
+            s = s.replace(/<\?php\s+\}\s*elseif\s*\((.+?)\)\s*\{\s*\?>/g, (m, cond) => {
+                return '{% elseif ' + convertConditionToTwig(cond) + ' %}';
+            });
+            // Alternative syntax with colon
+            s = s.replace(/<\?php\s+elseif\s*\((.+?)\)\s*:\s*\?>/g, (m, cond) => {
+                return '{% elseif ' + convertConditionToTwig(cond) + ' %}';
+            });
+
+            // 12. else
+            s = s.replace(/<\?php\s+\}\s*else\s*\{\s*\?>/g, '{% else %}');
+            // Alternative syntax with colon
+            s = s.replace(/<\?php\s+else\s*:\s*\?>/g, '{% else %}');
+
+            // 13. Closing braces
+            s = s.replace(/<\?php\s+\}\s*\?>/g, '{% endif %}');
+            // Alternative syntax: endif
+            s = s.replace(/<\?php\s+endif\s*;?\s*\?>/g, '{% endif %}');
+
+            // 14. Fix endfor tags
+            s = fixEndforTags(s);
+
+            // 15. echo with concatenation
+            s = s.replace(/<\?php\s+echo\s+([^;]+?)\s*;?\s*\?>/g, (m, expr) => {
+                if (expr.includes('.') && !expr.includes("['")) {
+                    let parts = expr.split(/\s*\.\s*/);
+                    let result = parts.map(p => {
+                        p = p.trim();
+                        if (p.startsWith('$')) {
+                            return '{{ ' + convertVarToTwig(p.substring(1)) + ' }}';
+                        } else if (p.startsWith("'") || p.startsWith('"')) {
+                            return p.replace(/^['"]|['"]$/g, '');
+                        }
+                        return p;
+                    }).join('');
+                    return result;
+                }
+                if (expr.startsWith('$')) {
+                    return '{{ ' + convertVarToTwig(expr.substring(1).trim()) + ' }}';
+                }
+                return '{{ ' + expr.trim() + ' }}';
+            });
+
+            // 16. Variable assignments
+            s = s.replace(/<\?php\s+\$(\w+)\s*=\s*([^;]+)\s*;\s*\?>/g, (m, varName, value) => {
+                if (value.includes('<') || value.includes('>')) return m;
+                return `{% set ${varName} = ${convertValueToTwig(value.trim())} %}`;
+            });
+
+            // 17. Increment
+            s = s.replace(/<\?php\s+\$(\w+)\s*\+\+\s*;?\s*\?>/g, '{% set $1 = $1 + 1 %}');
+
+            // 18. Restore script blocks with FULL PHP conversion
+            s = s.replace(/___SCRIPT_BLOCK_(\d+)___/g, (m, index) => {
+                const block = scriptBlocks[parseInt(index)];
+                let content = block.content;
+
+                // Convert echo $var
+                content = content.replace(/<\?php\s+echo\s+\$([^;]+?)\s*;?\s*\?>/g, (m, v) => {
+                    return '{{ ' + convertVarToTwig(v.trim()) + '|raw }}';
+                });
+
+                // Convert if with comparison
+                content = content.replace(/<\?php\s+if\s*\(\s*(.+?)\s*\)\s*\{\s*\?>/g, (m, cond) => {
+                    return '{% if ' + convertConditionToTwig(cond) + ' %}';
+                });
+
+                // Convert else if / elseif
+                content = content.replace(/<\?php\s+\}\s*else\s*if\s*\(\s*(.+?)\s*\)\s*\{\s*\?>/g, (m, cond) => {
+                    return '{% elseif ' + convertConditionToTwig(cond) + ' %}';
+                });
+                content = content.replace(/<\?php\s+\}\s*elseif\s*\(\s*(.+?)\s*\)\s*\{\s*\?>/g, (m, cond) => {
+                    return '{% elseif ' + convertConditionToTwig(cond) + ' %}';
+                });
+
+                // Convert else
+                content = content.replace(/<\?php\s+\}\s*else\s*\{\s*\?>/g, '{% else %}');
+
+                // Convert closing brace (need to determine if it's endif or endfor)
+                // First pass: track structure
+                let structures = [];
+                let tempContent = content;
+                tempContent = tempContent.replace(/\{% for /g, () => { structures.push('for'); return '{% for '; });
+                tempContent = tempContent.replace(/\{% if /g, () => { structures.push('if'); return '{% if '; });
+
+                // Convert closing braces with context
+                content = content.replace(/<\?php\s+\}\s*\?>/g, () => {
+                    // Check what's on the stack (simplified - assumes balanced)
+                    return '{% endif %}';
+                });
+
+                // Convert foreach with key => value
+                content = content.replace(/<\?php\s+foreach\s*\(\s*\$(\w+)\s+as\s+\$(\w+)\s*=>\s*\$(\w+)\s*\)\s*\{\s*\?>/g,
+                    '{% for $2, $3 in $1 %}');
+
+                // Convert simple foreach
+                content = content.replace(/<\?php\s+foreach\s*\(\s*\$(\w+)\s+as\s+\$(\w+)\s*\)\s*\{\s*\?>/g,
+                    '{% for $2 in $1 %}');
+
+                return block.open + content + block.close;
+            });
+
+            // 20. Convert OpenCart 2 token to OpenCart 3 user_token
+            s = s.replace(/\btoken\b(?=\s*[}%])/g, 'user_token');
+            s = s.replace(/\.token\b/g, '.user_token');
+
+            return s;
+        }
+
+        function convertVarToTwig(phpVar) {
+            let v = phpVar.replace(/^\$/, '');
+            v = v.replace(/\[['"]?(\w+)['"]?\]/g, '.$1');
+            v = v.replace(/^\./, '');
+            return v;
+        }
+
+        function convertConditionToTwig(cond) {
+            let result = cond.trim();
+            result = result.replace(/\$(\w+)/g, '$1');
+            result = result.replace(/\[['"]?(\w+)['"]?\]/g, '.$1');
+            result = result.replace(/\s*&&\s*/g, ' and ');
+            result = result.replace(/\s*\|\|\s*/g, ' or ');
+            result = result.replace(/!([^=])/g, 'not $1');
+            result = result.replace(/\s*==\s*true/gi, '');
+            result = result.replace(/===/g, '==');
+            result = result.replace(/!==/g, '!=');
+            return result.trim();
+        }
+
+        function convertComplexPhpBlock(phpCode) {
+            let lines = phpCode.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('//'));
+            let result = [];
+            let blockStack = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i];
+
+                // Pattern 1: $var = 'HTML string';
+                const assignConcatMatch = line.match(/^\$(\w+)\s*=\s*'(.*)'\s*;\s*$/);
+                if (assignConcatMatch) {
+                    const varName = assignConcatMatch[1];
+                    let htmlContent = assignConcatMatch[2];
+                    htmlContent = htmlContent.replace(/'\s*\.\s*\$(\w+(?:\[[^\]]+\])*)\s*\.\s*'/g, (m, v) => '{{ ' + convertVarToTwig(v) + ' }}');
+                    htmlContent = htmlContent.replace(/'\s*\.\s*\$(\w+(?:\[[^\]]+\])*)$/g, (m, v) => '{{ ' + convertVarToTwig(v) + ' }}');
+                    htmlContent = htmlContent.replace(/^\$(\w+(?:\[[^\]]+\])*)\s*\.\s*'/g, (m, v) => '{{ ' + convertVarToTwig(v) + ' }}');
+                    result.push(`{% set ${varName} %}\n${htmlContent}\n{% endset %}`);
+                    continue;
+                }
+
+                // Pattern 2: echo $var;
+                const echoVarMatch = line.match(/^echo\s+\$(\w+)\s*;\s*$/);
+                if (echoVarMatch) { result.push(`{{ ${echoVarMatch[1]}|raw }}`); continue; }
+
+                // Pattern 3: echo 'literal';
+                let echoLiteralMatch = line.match(/^echo\s+'(.*)'\s*;\s*$/);
+                if (echoLiteralMatch) { result.push(echoLiteralMatch[1]); continue; }
+                echoLiteralMatch = line.match(/^echo\s+"(.*)"\s*;\s*$/);
+                if (echoLiteralMatch) { result.push(echoLiteralMatch[1]); continue; }
+
+                // Pattern 4: echo 'HTML'.$var;
+                const echoConcatMatch = line.match(/^echo\s+(.+)\s*;\s*$/);
+                if (echoConcatMatch && echoConcatMatch[1].includes('.')) {
+                    let parts = echoConcatMatch[1].split(/\s*\.\s*/);
+                    let converted = parts.map(p => {
+                        p = p.trim();
+                        if (p.startsWith('$')) return '{{ ' + convertVarToTwig(p.substring(1)) + '|raw }}';
+                        else if (p.startsWith("'") || p.startsWith('"')) return p.replace(/^['"]|['"]$/g, '');
+                        return p;
+                    }).join('');
+                    result.push(converted);
+                    continue;
+                }
+
+                // Pattern 5: $i = 1;
+                const assignNumMatch = line.match(/^\$(\w+)\s*=\s*(\d+)\s*;\s*$/);
+                if (assignNumMatch) { result.push(`{% set ${assignNumMatch[1]} = ${assignNumMatch[2]} %}`); continue; }
+
+                // Pattern 6: $i++;
+                const incrementMatch = line.match(/^\$(\w+)\s*\+\+\s*;\s*$/);
+                if (incrementMatch) { result.push(`{% set ${incrementMatch[1]} = ${incrementMatch[1]} + 1 %}`); continue; }
+
+                // Pattern 7: foreach ($arr as $item) {
+                const foreachMatch = line.match(/^foreach\s*\(\s*\$(\w+)\s+as\s+\$(\w+)\s*\)\s*\{?\s*$/);
+                if (foreachMatch) { result.push(`{% for ${foreachMatch[2]} in ${foreachMatch[1]} %}`); blockStack.push('for'); continue; }
+
+                // Pattern 8: foreach ($arr as $key => $val) {
+                const foreachKVMatch = line.match(/^foreach\s*\(\s*\$(\w+)\s+as\s+\$(\w+)\s*=>\s*\$(\w+)\s*\)\s*\{?\s*$/);
+                if (foreachKVMatch) { result.push(`{% for ${foreachKVMatch[2]}, ${foreachKVMatch[3]} in ${foreachKVMatch[1]} %}`); blockStack.push('for'); continue; }
+
+                // Pattern 9: if ($condition) {
+                const ifMatch = line.match(/^if\s*\(\s*(.+)\s*\)\s*\{?\s*$/);
+                if (ifMatch) { result.push(`{% if ${convertConditionToTwig(ifMatch[1])} %}`); blockStack.push('if'); continue; }
+
+                // Pattern 10: else
+                if (/^(\}?\s*)?else\s*\{?\s*$/.test(line)) { result.push('{% else %}'); continue; }
+
+                // Pattern 11: else if
+                const elseifMatch = line.match(/^(\}?\s*)?else\s*if\s*\(\s*(.+)\s*\)\s*\{?\s*$/);
+                if (elseifMatch) { result.push(`{% elseif ${convertConditionToTwig(elseifMatch[2])} %}`); continue; }
+
+                // Pattern 12: closing } with lookahead
+                if (line === '}' || line === '};') {
+                    const nextLine = (i + 1 < lines.length) ? lines[i + 1].trim() : '';
+                    const nextIsElse = /^else\s*\{?\s*$/.test(nextLine) || /^else\s*if\s*\(/.test(nextLine);
+                    if (nextIsElse) continue;
+                    const lastBlock = blockStack.pop();
+                    result.push(lastBlock === 'for' ? '{% endfor %}' : '{% endif %}');
+                    continue;
+                }
+
+                // Pattern 13: Opening {
+                if (line === '{') continue;
+
+                return null;
+            }
+
+            return result.join('\n');
+        }
+
+        function convertValueToTwig(value) {
+            let result = value.replace(/\$(\w+)/g, '$1');
+            result = result.replace(/\[['"]?(\w+)['"]?\]/g, '.$1');
+            return result;
+        }
+
+        function fixEndforTags(code) {
+            const lines = code.split('\n');
+            const stack = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line.includes('{% for ')) stack.push({ type: 'for', line: i });
+                else if (line.includes('{% if ')) stack.push({ type: 'if', line: i });
+                else if (line === '{% else %}') {
+                    for (let j = stack.length - 1; j >= 0; j--) {
+                        if (stack[j].type === 'if') { stack[j].hasElse = true; break; }
+                    }
+                }
+                else if (line.includes('{% endif %}')) {
+                    const last = stack.pop();
+                    if (last && last.type === 'for') lines[i] = lines[i].replace('{% endif %}', '{% endfor %}');
+                }
+                else if (line.includes('{% endfor %}')) stack.pop();
+            }
+
+            return lines.join('\n');
+        }
+
+        // ==================== TWIG → TPL ====================
+
+        function twigToTPL(code) {
+            let s = code;
+
+            // Handle Twig comments with PHP blocks
+            s = s.replace(/\{#\s*PHP_BLOCK_\d+:.*?#\}/gs, '');
+            s = s.replace(/\{#\s*Original:\s*([\s\S]*?)\s*#\}/g, (m, original) => {
+                const phpMatch = original.match(/<\?php[\s\S]*?\?>/);
+                return phpMatch ? phpMatch[0] : '';
+            });
+
+            // {{ var|escape }}
+            s = s.replace(/\{\{\s*([^}|]+)\s*\|\s*escape\s*\}\}/g, (m, v) => {
+                return `<?php echo htmlspecialchars(${convertVarToPhp(v.trim())}, ENT_QUOTES, 'UTF-8'); ?>`;
+            });
+
+            // {{ var|raw }}
+            s = s.replace(/\{\{\s*([^}|]+)\s*\|\s*raw\s*\}\}/g, (m, v) => {
+                return `<?php echo ${convertVarToPhp(v.trim())}; ?>`;
+            });
+
+            // {{ var }}
+            s = s.replace(/\{\{\s*([^}|]+)\s*\}\}/g, (m, v) => {
+                return `<?php echo ${convertVarToPhp(v.trim())}; ?>`;
+            });
+
+            // {% for key, value in array %}
+            s = s.replace(/\{%\s*for\s+(\w+)\s*,\s*(\w+)\s+in\s+(\w+)\s*%\}/g,
+                '<?php foreach ($$$3 as $$$1 => $$$2) { ?>');
+
+            // {% for item in array %}
+            s = s.replace(/\{%\s*for\s+(\w+)\s+in\s+(\w+(?:\.\w+)*)\s*%\}/g, (m, item, arr) => {
+                return `<?php foreach (${convertVarToPhp(arr)} as $${item}) { ?>`;
+            });
+
+            // {% endfor %}
+            s = s.replace(/\{%\s*endfor\s*%\}/g, '<?php } ?>');
+
+            // {% if var in array %}
+            s = s.replace(/\{%\s*if\s+(\w+(?:\.\w+)*)\s+in\s+(\w+(?:\.\w+)*)\s*%\}/g, (m, needle, haystack) => {
+                return `<?php if (in_array(${convertVarToPhp(needle)}, ${convertVarToPhp(haystack)})) { ?>`;
+            });
+
+            // {% if condition %}
+            s = s.replace(/\{%\s*if\s+(.+?)\s*%\}/g, (m, cond) => {
+                return `<?php if (${convertConditionToPhp(cond)}) { ?>`;
+            });
+
+            // {% elseif %}
+            s = s.replace(/\{%\s*elseif\s+(.+?)\s*%\}/g, (m, cond) => {
+                return `<?php } elseif (${convertConditionToPhp(cond)}) { ?>`;
+            });
+
+            // {% else %}
+            s = s.replace(/\{%\s*else\s*%\}/g, '<?php } else { ?>');
+
+            // {% endif %}
+            s = s.replace(/\{%\s*endif\s*%\}/g, '<?php } ?>');
+
+            // {% set var = value %}
+            s = s.replace(/\{%\s*set\s+(\w+)\s*=\s*(.+?)\s*%\}/g, (m, varName, value) => {
+                return `<?php $${varName} = ${convertValueToPhp(value)}; ?>`;
+            });
+
+            // Clean up $$$
+            s = s.replace(/\$\$\$/g, '$');
+
+            // Convert OpenCart 3 user_token to OpenCart 2 token
+            s = s.replace(/\buser_token\b/g, 'token');
+
+            return s;
+        }
+
+        function convertVarToPhp(twigVar) {
+            let v = twigVar.trim();
+            v = v.replace(/\[([^\]]+)\]/g, (match, inner) => `[${convertVarToPhp(inner)}]`);
+            let parts = v.split('.');
+            if (parts.length === 0) return '$' + v;
+            let result = parts[0];
+            if (!result.startsWith('$') && !result.includes('[')) result = '$' + result;
+            else if (!result.startsWith('$')) {
+                const match = result.match(/^(\w+)(\[.+)/);
+                if (match) result = '$' + match[1] + match[2];
+            }
+            for (let i = 1; i < parts.length; i++) {
+                let part = parts[i];
+                if (part.includes('[')) {
+                    result += `['${part.replace(/\[.*$/, '')}']`;
+                    const brackets = part.match(/\[.*$/);
+                    if (brackets) result += brackets[0];
+                } else {
+                    result += `['${part}']`;
+                }
+            }
+            return result;
+        }
+
+        function convertConditionToPhp(cond) {
+            let result = cond.trim();
+            result = result.replace(/\s+and\s+/gi, ' && ');
+            result = result.replace(/\s+or\s+/gi, ' || ');
+            result = result.replace(/\bnot\s+/gi, '!');
+            result = result.replace(/\b(\w+(?:\.\w+)*)\b/g, (m, v) => {
+                if (/^['"]/.test(v) || /^\d/.test(v) || ['true', 'false', 'null'].includes(v.toLowerCase())) return v;
+                if (['==', '!=', '&&', '||', '!'].includes(v)) return v;
+                return convertVarToPhp(v);
+            });
+            return result;
+        }
+
+        function convertValueToPhp(value) {
+            let result = value.trim();
+            if (/^(\w+)\s*\+\s*1$/.test(result)) {
+                const varName = result.match(/^(\w+)/)[1];
+                return `$${varName} + 1`;
+            }
+            result = result.replace(/\b(\w+(?:\.\w+)+)\b/g, (m, v) => convertVarToPhp(v));
+            result = result.replace(/\b(\w+)\b/g, (m, v) => {
+                if (/^\d/.test(v) || ['true', 'false', 'null'].includes(v.toLowerCase())) return v;
+                if (!v.startsWith('$')) return '$' + v;
+                return v;
+            });
+            return result;
+        }
+
+        // ==================== UI FUNCTIONS ====================
+
+        let currentMode = 'tpl2twig';
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('btn-tpl2twig').classList.toggle('active', mode === 'tpl2twig');
+            document.getElementById('btn-twig2tpl').classList.toggle('active', mode === 'twig2tpl');
+
+            if (mode === 'tpl2twig') {
+                document.getElementById('input-label').textContent = 'TPL (вход)';
+                document.getElementById('input-type').textContent = '.tpl';
+                document.getElementById('output-label').textContent = 'Twig (выход)';
+                document.getElementById('output-type').textContent = '.twig';
+                document.getElementById('input-code').placeholder = 'Вставьте TPL код здесь...';
+            } else {
+                document.getElementById('input-label').textContent = 'Twig (вход)';
+                document.getElementById('input-type').textContent = '.twig';
+                document.getElementById('output-label').textContent = 'TPL (выход)';
+                document.getElementById('output-type').textContent = '.tpl';
+                document.getElementById('input-code').placeholder = 'Вставьте Twig код здесь...';
+            }
+        }
+
+        function convert() {
+            const input = document.getElementById('input-code').value;
+            if (!input.trim()) { showToast('Введите код для конвертации', 'error'); return; }
+
+            try {
+                let result = currentMode === 'tpl2twig' ? tplToTwig(input) : twigToTPL(input);
+                document.getElementById('output-code').value = result;
+                updateStats('output');
+                showToast('Конвертация завершена!', 'success');
+                setStatus('Конвертация успешна', false);
+            } catch (e) {
+                showToast('Ошибка конвертации: ' + e.message, 'error');
+                setStatus('Ошибка конвертации', true);
+            }
+        }
+
+        function copyOutput() {
+            const output = document.getElementById('output-code').value;
+            if (!output.trim()) { showToast('Нечего копировать', 'error'); return; }
+            navigator.clipboard.writeText(output).then(() => showToast('Скопировано в буфер обмена', 'success'));
+        }
+
+        function clearAll() {
+            document.getElementById('input-code').value = '';
+            document.getElementById('output-code').value = '';
+            updateStats('input');
+            updateStats('output');
+            showToast('Очищено', 'success');
+        }
+
+        function updateStats(type) {
+            const textarea = document.getElementById(type + '-code');
+            const text = textarea.value;
+            const lines = text.split('\n').length;
+            document.getElementById(type + '-lines').textContent = lines + ' строк';
+            document.getElementById(type + '-chars').textContent = text.length + ' символов';
+            updateLineNumbers(type);
+        }
+
+        function updateLineNumbers(type) {
+            const textarea = document.getElementById(type + '-code');
+            const lineNums = document.getElementById(type + '-line-nums');
+            const lines = textarea.value.split('\n').length;
+            let html = '';
+            for (let i = 1; i <= Math.max(lines, 20); i++) html += i + '<br>';
+            lineNums.innerHTML = html;
+        }
+
+        function syncScroll(type) {
+            const textarea = document.getElementById(type + '-code');
+            document.getElementById(type + '-line-nums').scrollTop = textarea.scrollTop;
+        }
+
+        function showToast(message, type) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast ' + type;
+            toast.innerHTML = `<span style="font-size: 1.1em;">${type === 'success' ? '✅' : '⚠️'}</span><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function setStatus(text, isError) {
+            document.getElementById('status-text').textContent = text;
+            document.getElementById('status-dot').classList.toggle('error', isError);
+        }
+
+        function showInfoTab(tabId) {
+            document.querySelectorAll('.info-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.info-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('info-' + tabId).classList.add('active');
+        }
+
+        // Initialize
+        updateStats('input');
+        updateStats('output');
+    </script>
+</body>
+
+</html>
