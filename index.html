@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="author" content="Tom">
-    <title>Конвертер TPL ↔ Twig v2.1 | by Tom</title>
+    <title>Конвертер TPL ↔ Twig v2.2 | by Tom</title>
     <!-- No external dependencies - fully offline -->
     <style>
         :root {
@@ -471,7 +471,7 @@
                 <div class="logo">
                     <span style="font-size: 1.5rem; color: var(--accent-primary);">⑂</span>
                     <span>TPL ↔ Twig Converter</span>
-                    <span class="version-badge">v2.1</span>
+                    <span class="version-badge">v2.2</span>
                 </div>
                 <div class="mode-toggle">
                     <button class="mode-btn active" id="btn-tpl2twig" onclick="setMode('tpl2twig')">
@@ -581,12 +581,27 @@
                         <span class="rule-arrow">→</span>
                         <code>{% if v==1 %}sel{% endif %}</code>
                     </div>
+                    <div class="rule-item">
+                        <code>{{ var|slice(0, 50) }}</code>
+                        <span class="rule-arrow">→</span>
+                        <code>utf8_substr($var, 0, 50)</code>
+                    </div>
+                    <div class="rule-item">
+                        <code>{{ var|e('html_attr') }}</code>
+                        <span class="rule-arrow">→</span>
+                        <code>htmlspecialchars($var, ...)</code>
+                    </div>
+                    <div class="rule-item">
+                        <code>value|length</code>
+                        <span class="rule-arrow">→</span>
+                        <code>utf8_strlen($value)</code>
+                    </div>
                 </div>
             </div>
             <div class="info-content" id="info-about">
-                <p>Конвертер TPL ↔ Twig v2.1 для миграции шаблонов OpenCart 2.x на OpenCart 3.x+</p>
+                <p>Конвертер TPL ↔ Twig v2.2 для миграции шаблонов OpenCart 2.x на OpenCart 3.x+</p>
                 <p style="margin-top: 8px;">Поддерживает: вложенные массивы, циклы foreach с if/else, строки с
-                    конкатенацией, isset(), empty(), in_array().</p>
+                    конкатенацией, isset(), empty(), in_array(), фильтры length, slice, escape.</p>
             </div>
         </div>
 
@@ -606,7 +621,7 @@
     <script>
         /**
          * TPL ↔ Twig Converter for OpenCart 3.x
-         * Comprehensive conversion rules v2.1
+         * Comprehensive conversion rules v2.2
          * Supports complex patterns from Hard Example folder
          */
 
@@ -989,17 +1004,21 @@ ${match}
                 return phpMatch ? phpMatch[0] : '';
             });
 
-            // {{ var|escape }}
-            s = s.replace(/\{\{\s*([^}|]+)\s*\|\s*escape\s*\}\}/g, (m, v) => {
+            // 1. Filter: slice
+            s = s.replace(/\{\{\s*([^}|]+)\s*\|\s*slice\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)\s*(?:\|\s*raw\s*)?\}\}/g, (m, v, start, length) => {
+                return `<?php echo utf8_substr(${convertVarToPhp(v.trim())}, ${start}, ${length}); ?>`;
+            });
+
+            // 2. Filter: escape / e
+            s = s.replace(/\{\{\s*([^}|]+)\s*\|\s*(?:escape|e)(?:\s*\(\s*['"]?[^'"]*['"]?\s*\))?\s*\}\}/g, (m, v) => {
                 return `<?php echo htmlspecialchars(${convertVarToPhp(v.trim())}, ENT_QUOTES, 'UTF-8'); ?>`;
             });
 
-            // {{ var|raw }}
+            // 3. Simple filters and variables
             s = s.replace(/\{\{\s*([^}|]+)\s*\|\s*raw\s*\}\}/g, (m, v) => {
                 return `<?php echo ${convertVarToPhp(v.trim())}; ?>`;
             });
 
-            // {{ var }}
             s = s.replace(/\{\{\s*([^}|]+)\s*\}\}/g, (m, v) => {
                 return `<?php echo ${convertVarToPhp(v.trim())}; ?>`;
             });
@@ -1053,6 +1072,7 @@ ${match}
 
         function convertVarToPhp(twigVar) {
             let v = twigVar.trim();
+            if (v.startsWith('__STRING_')) return v;
             v = v.replace(/\[([^\]]+)\]/g, (match, inner) => `[${convertVarToPhp(inner)}]`);
             let parts = v.split('.');
             if (parts.length === 0) return '$' + v;
@@ -1077,29 +1097,73 @@ ${match}
 
         function convertConditionToPhp(cond) {
             let result = cond.trim();
+
+            // Mask strings in this condition
+            const strings = [];
+            result = result.replace(/(['"])(?:(?=(\\?))\2.)*?\1/g, (match) => {
+                const placeholder = `__STRING_${strings.length}__`;
+                strings.push(match);
+                return placeholder;
+            });
+
             result = result.replace(/\s+and\s+/gi, ' && ');
             result = result.replace(/\s+or\s+/gi, ' || ');
             result = result.replace(/\bnot\s+/gi, '!');
+            
+            // First convert variables
             result = result.replace(/\b(\w+(?:\.\w+)*)\b/g, (m, v) => {
+                if (v.startsWith('__STRING_')) return v;
                 if (/^['"]/.test(v) || /^\d/.test(v) || ['true', 'false', 'null'].includes(v.toLowerCase())) return v;
                 if (['==', '!=', '&&', '||', '!'].includes(v)) return v;
+                if (v === 'length') return v;
                 return convertVarToPhp(v);
             });
+
+            // Handle |length filter
+            result = result.replace(/([^|]+)\s*\|\s*length/g, (m, v) => {
+                return `utf8_strlen(${v.trim()})`;
+            });
+
+            // Unmask strings
+            for (let i = 0; i < strings.length; i++) {
+                result = result.replace(`__STRING_${i}__`, strings[i]);
+            }
+
             return result;
         }
 
         function convertValueToPhp(value) {
             let result = value.trim();
+
+            // Mask strings in this value
+            const strings = [];
+            result = result.replace(/(['"])(?:(?=(\\?))\2.)*?\1/g, (match) => {
+                const placeholder = `__STRING_${strings.length}__`;
+                strings.push(match);
+                return placeholder;
+            });
+
             if (/^(\w+)\s*\+\s*1$/.test(result)) {
                 const varName = result.match(/^(\w+)/)[1];
-                return `$${varName} + 1`;
+                let res = `$${varName} + 1`;
+                // Unmask before return
+                for (let i = 0; i < strings.length; i++) {
+                    res = res.replace(`__STRING_${i}__`, strings[i]);
+                }
+                return res;
             }
-            result = result.replace(/\b(\w+(?:\.\w+)+)\b/g, (m, v) => convertVarToPhp(v));
-            result = result.replace(/\b(\w+)\b/g, (m, v) => {
+            
+            result = result.replace(/\b(\w+(?:\.\w+)*)\b/g, (m, v) => {
+                if (v.startsWith('__STRING_')) return v;
                 if (/^\d/.test(v) || ['true', 'false', 'null'].includes(v.toLowerCase())) return v;
-                if (!v.startsWith('$')) return '$' + v;
-                return v;
+                return convertVarToPhp(v);
             });
+
+            // Unmask strings
+            for (let i = 0; i < strings.length; i++) {
+                result = result.replace(`__STRING_${i}__`, strings[i]);
+            }
+
             return result;
         }
 
